@@ -1,0 +1,8 @@
+{
+  "devServer": {
+    "port": 2365
+  },
+  "testServer": {
+    "port": 7432
+  }
+}
