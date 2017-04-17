@@ -5,7 +5,7 @@ const babel = require('rollup-plugin-babel');
 const inject = require('rollup-plugin-inject');
 
 module.exports = {
-  entry: './lib/Router.js',
+  entry: './lib/index.js',
   dest: './Router.js',
   format: 'cjs',
   plugins: [

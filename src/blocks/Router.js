@@ -5,10 +5,11 @@ import {
 
 export function Router(Block) {
   return class Router extends Block {
-    static template = ''
-      + '<d-if if="{isCurrentRoute && blockName}">'
-        + '<d-block name="{blockName}" route="{routeParams}" d-rest="{restArgs}"/>'
-      + ' </d-if>';
+    static template = html`
+      <d-if if="{isCurrentRoute && Block}">
+        <d-block Constructor="{Block}" route="{routeParams}" d-rest="{restArgs}"/>
+      </d-if>
+    `;
 
     constructor(opts) {
       super(opts);
@@ -24,12 +25,12 @@ export function Router(Block) {
 
         const {
           name,
-          block
+          Block
         } = router._rootRoute;
 
         this.globals.router = router;
         this.globals.route = null;
-        this.blockName = block;
+        this.Block = Block;
         this.isCurrentRoute = router._currentRoutes.indexOf(router._rootRoute) !== -1;
         this.routeParams = router._currentRouteParams;
         this.unsubscribe = router._subscribe(name, (isCurrentRoute) => {

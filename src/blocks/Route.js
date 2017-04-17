@@ -1,10 +1,10 @@
 export function Route(Block) {
   return class Route extends Block {
-    /* eslint prefer-template: 0 */
-    static template = ''
-      + '<d-if if="{blockName && isCurrentRoute}">'
-        + '<d-block name="{blockName}" route="{routeParams}" d-rest="{restArgs}"/>'
-      + '</d-if>';
+    static template = html`
+      <d-if if="{isCurrentRoute && Block}">
+        <d-block Constructor="{Block}" route="{routeParams}" d-rest="{restArgs}"/>
+      </d-if>
+    `;
 
     constructor(opts) {
       super(opts);
@@ -14,7 +14,7 @@ export function Route(Block) {
       const route = router._findRouteByName(name);
 
       if (route) {
-        this.blockName = route.block;
+        this.Block = route.Block;
         this.isCurrentRoute = router._currentRoutes.indexOf(route) !== -1;
         this.routeParams = router._currentRouteParams;
         this.unsubscribe = router._subscribe(name, (isCurrentRoute) => {

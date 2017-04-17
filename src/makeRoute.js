@@ -13,7 +13,7 @@ import Route from './Route';
 
 export function route(options) {
   return (Block) => {
-    options = assign({}, options, Block.routerOptions);
+    options = assign({}, options, Block.routerOptions, { Block });
 
     const {
       name,
@@ -27,7 +27,7 @@ export function route(options) {
       params,
       query
     } = options || {};
-    const routerInstance = (routers[router] = routers[router] || new Router(router));
+    const routerInstance = routers[router] = routers[router] || new Router(router);
     const {
       _initialized,
       _routes,

@@ -5,6 +5,12 @@
       {
         "modules": false
       }
+    ],
+    [
+      "dwayne",
+      {
+        "keepOriginal": false
+      }
     ]
   ],
   "plugins": [

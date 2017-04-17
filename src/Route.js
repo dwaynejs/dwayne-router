@@ -8,7 +8,7 @@ class Route {
 
     const {
       name,
-      block,
+      Block,
       path = '/',
       abstract = false,
       parent,
@@ -29,7 +29,7 @@ class Route {
 
     assign(this, {
       name,
-      block,
+      Block,
       parentName: parent,
       abstract: !!abstract,
       children: [],
