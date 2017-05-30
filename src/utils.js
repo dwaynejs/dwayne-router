@@ -2,29 +2,39 @@ const {
   hasOwnProperty,
   toString
 } = {};
-const charactersToEscape = [];
-const charactersToEscapeRegExp = new RegExp(map(charactersToEscape, (character) => (
-  `\\${ character }`
-)).join('|'), 'g');
+const charactersToEscape = [
+  '.',
+  '+', '*', '?',
+  '(', ')',
+  '[', ']',
+  '{', '}',
+  '<', '>',
+  '^', '$',
+  '!',
+  '=',
+  ':',
+  '-',
+  '|',
+  ',',
+  '\\'
+];
+const charactersToEscapeRegExp = new RegExp(
+  charactersToEscape
+    .map((character) => (
+      `\\${ character }`
+    ))
+    .join('|'),
+  'g'
+);
 
 export function toStringTag(value) {
-  return toString
-    .call(value)
-    .slice(8, -1);
+  return value::toString().slice(8, -1);
 }
 
-export function isArray(value) {
-  return toStringTag(value) === 'Array';
-}
+export const { isArray } = Array;
 
 export function isEmpty(object) {
-  for (const key in object) {
-    if (hasOwnProperty.call(object, key)) {
-      return false;
-    }
-  }
-
-  return true;
+  return iterate(object, () => false) !== false;
 }
 
 export function isFunction(value) {
@@ -68,7 +78,9 @@ export function iterate(object, callback) {
   const { length } = object || {};
 
   for (const key in object) {
-    if (hasOwnProperty.call(object, key)) {
+    /* istanbul ignore else */
+    if (object::hasOwnProperty(key)) {
+      /* istanbul ignore if */
       if (array && iterated++ >= length) {
         break;
       }
@@ -90,18 +102,6 @@ export function find(object, callback) {
   ));
 }
 
-export function map(object, callback) {
-  const newObject = isArray(object)
-    ? []
-    : {};
-
-  iterate(object, (value, key) => {
-    newObject[key] = callback(value, key, object);
-  });
-
-  return newObject;
-}
-
 export function replaceString(string, stringToReplace, replacement) {
   return string
     .split(stringToReplace)
@@ -109,32 +109,26 @@ export function replaceString(string, stringToReplace, replacement) {
 }
 
 export function escapeRegExp(string) {
-  return string.replace(charactersToEscapeRegExp, '');
+  return string.replace(charactersToEscapeRegExp, '\\$&');
 }
 
 export function keysCount(object) {
   let count = 0;
 
-  for (const key in object) {
-    if (hasOwnProperty.call(object, key)) {
-      count++;
-    }
-  }
-
-  return count;
-}
-
-export function allKeysCount(object) {
-  let count = 0;
-
-  /* eslint guard-for-in: 0 */
-  for (const key in object) {
+  iterate(object, () => {
     count++;
-  }
+  });
 
   return count;
 }
 
-export function setProto(object, proto) {
-  Object.setPrototypeOf(object, proto);
+export function get(object, key, defaultValue) {
+  return object::hasOwnProperty(key)
+    ? object[key]
+    : defaultValue;
 }
+
+export const encode = encodeURIComponent;
+export const decode = decodeURIComponent;
+
+export const { create } = Object;

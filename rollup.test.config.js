@@ -7,11 +7,9 @@ const babel = require('rollup-plugin-babel');
 const inject = require('rollup-plugin-inject');
 
 module.exports = {
-  entry: './test/Router.js',
-  dest: './test.js',
   format: 'iife',
-  moduleName: 'Router',
-  sourceMap: true,
+  moduleName: 'DwayneRouter',
+  sourceMap: 'inline',
   plugins: [
     builtins(),
     npm({
@@ -31,7 +29,8 @@ module.exports = {
           'deepStrictEqual',
           'notDeepEqual',
           'notEqual',
-          'strictEqual'
+          'strictEqual',
+          'throws'
         ]
       }
     }),
@@ -40,12 +39,26 @@ module.exports = {
     }),
     babel({
       include: './**/*.js',
-      exclude: 'node_modules/**'
+      exclude: 'node_modules/**',
+      plugins: [
+        'external-helpers',
+        [
+          'istanbul',
+          {
+            exclude: [
+              'node_modules/**',
+              'test/**',
+
+              'src/global.js'
+            ]
+          }
+        ]
+      ]
     }),
     inject({
-      exclude: './lib/constants/global.js',
+      exclude: './src/constants/global.js',
       modules: {
-        global: path.resolve('./lib/global.js')
+        global: path.resolve('./src/global.js')
       }
     })
   ]

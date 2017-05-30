@@ -5,9 +5,12 @@ const babel = require('rollup-plugin-babel');
 const inject = require('rollup-plugin-inject');
 
 module.exports = {
-  entry: './lib/index.js',
-  dest: './Router.js',
+  entry: './src/index.js',
+  dest: './lib/index.js',
   format: 'cjs',
+  external: [
+    'dwayne'
+  ],
   plugins: [
     npm({
       browser: true,
@@ -18,9 +21,9 @@ module.exports = {
     }),
     babel(),
     inject({
-      exclude: './lib/constants/global.js',
+      exclude: './src/constants/global.js',
       modules: {
-        global: path.resolve('./lib/global.js')
+        global: path.resolve('./src/global.js')
       }
     })
   ]

@@ -32,9 +32,9 @@ module.exports = {
       exclude: 'node_modules/**'
     }),
     inject({
-      exclude: './lib/constants/global.js',
+      exclude: './src/constants/global.js',
       modules: {
-        global: path.resolve('./lib/global.js')
+        global: path.resolve('./src/global.js')
       }
     })
   ]

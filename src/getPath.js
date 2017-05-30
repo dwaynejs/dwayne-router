@@ -4,13 +4,13 @@ import {
   isString,
   isNil,
   escapeRegExp,
-  iterate
+  iterate,
+  keysCount
 } from './utils';
 
-export default (path) => {
-  const params = Object.create(null);
+export default (path, parent) => {
+  const params = {};
 
-  /* eslint indent: 0 */
   switch (true) {
     case isRegExp(path): {
       return {
@@ -20,7 +20,7 @@ export default (path) => {
       };
     }
 
-    case isNil(path): {
+    case isNil(path) || path === '/': {
       return {
         path: '/',
         url: '/',
@@ -38,28 +38,26 @@ export default (path) => {
 
     case isString(path): {
       if (path.indexOf('/')) {
-        throw new Error('If route path is a string it must start with "/"! (at route)');
+        throw new Error('If route path is a string it must start with "/"! (at new Route)');
       }
 
-      const index = path.indexOf('?');
       let newURL = '';
       let newPath = '';
-      let paramsCount = 0;
-      const pathParts = path
-        .slice(0, index === -1 ? path.length : index)
-        .replace(/^\/|\/$/g, '')
-        .split(/\//);
+      let paramsCount = parent
+        ? keysCount(parent.params) + 1
+        : 1;
+      const pathParts = path.split(/\//);
 
-      iterate(pathParts, (part, i, array) => {
-        if (!part && array.length > 1) {
-          throw new Error('If route path is a string it must not contain "//" or end with "/"! (at makeRoute)');
+      iterate(pathParts, (part, i) => {
+        if (!part) {
+          if (i > 0) {
+            throw new Error('If route path is a string it must not contain "//" or end with "/"! (at new Route)');
+          }
+
+          return;
         }
 
         const index = part.indexOf(':');
-
-        if (index > 0) {
-          throw new Error('If route path is a string resource part must be either a string or an URL parameter! (at makeRoute)');
-        }
 
         if (index === -1) {
           newURL += `/${ part }`;
@@ -68,11 +66,12 @@ export default (path) => {
           return;
         }
 
-        const name = part.slice(1);
+        const before = part.slice(0, index);
+        const name = part.slice(index + 1);
 
         params[name] = paramsCount++;
-        newURL += `/:${ name }`;
-        newPath += '/([^/]*)';
+        newURL += `/${ before }:${ name }`;
+        newPath += `/${ before }([^/]*)`;
       });
 
       return {
@@ -83,7 +82,7 @@ export default (path) => {
     }
 
     default: {
-      throw new Error('State path must be a string, a regular expression, null or undefined! (at route)');
+      throw new Error('Route path must be a string, regexp, function, null or undefined! (at new Route)');
     }
   }
 };

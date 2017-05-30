@@ -1,61 +1,54 @@
+import { Block, Children, Rest } from 'dwayne';
+
 import { isString } from '../utils';
 
-export function Link(Block) {
-  return class Link extends Block {
-    /* eslint prefer-template: 0 */
-    static template = ''
-      + '<a'
-      + '  href="{href}"'
-      + '  d-class#router-link="{className}"'
-      + '  d-style#router-link="{style}"'
-      + '  d-rest="{restArgs}"'
-      + '>'
-        + '<d-block/>'
-      + '</a>';
+const watchArgs = ($) => ({
+  ...$.args
+});
 
-    afterConstruct() {
-      this.watch('args', () => {
-        let ClassName;
-        let RestArgs;
-        let Style;
+export class Link extends Block {
+  static html = html`
+    <a href="{href}" Rest="{restArgs}">
+      <Children/>
+    </a>
+  `;
 
-        if (isString(this.args.href)) {
-          const {
-            href,
-            class: className,
-            style,
-            ...restArgs
-          } = this.args;
+  afterConstruct() {
+    this.setArgs(
+      this.evaluate(watchArgs, this.setArgs)
+    );
+  }
 
-          this.href = href;
-          ClassName = className;
-          Style = style;
-          RestArgs = restArgs;
-        } else {
-          const {
-            to,
-            class: className,
-            style,
-            query,
-            params,
-            hash,
-            ...restArgs
-          } = this.args;
+  setArgs = (args) => {
+    let Href;
+    let RestArgs;
 
-          this.href = this.globals.router.buildURL(to, {
-            query,
-            params,
-            hash
-          });
-          ClassName = className;
-          Style = style;
-          RestArgs = restArgs;
-        }
+    if (isString(args.href)) {
+      const {
+        href,
+        ...restArgs
+      } = args;
 
-        this.className = ClassName;
-        this.style = Style;
-        this.restArgs = RestArgs;
+      Href = href;
+      RestArgs = restArgs;
+    } else {
+      const {
+        to,
+        query,
+        params,
+        hash,
+        ...restArgs
+      } = args;
+
+      Href = this.globals.router.buildURL(to, {
+        query,
+        params,
+        hash
       });
+      RestArgs = restArgs;
     }
+
+    this.href = Href;
+    this.restArgs = RestArgs;
   };
 }

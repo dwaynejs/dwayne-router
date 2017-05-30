@@ -1,13 +1,17 @@
-import { iterate } from './utils';
+import {
+  iterate,
+  create,
+  decode
+} from './utils';
 import { location } from './constants';
 
-export default (decodeQuery) => {
+export default () => {
   const {
     search: query,
     hash
   } = location;
   const params = {
-    query: Object.create(null),
+    query: create(null),
     hash: hash.replace(/^#/, '')
   };
 
@@ -22,8 +26,8 @@ export default (decodeQuery) => {
   iterate(queryParams, (rawParam) => {
     let [param, value = ''] = rawParam.split('=');
 
-    param = decodeURIComponent(param);
-    value = decodeQuery ? decodeURIComponent(value) : value;
+    param = decode(param);
+    value = decode(value);
 
     if (!/^[^[\]]+/.test(param)) {
       return;

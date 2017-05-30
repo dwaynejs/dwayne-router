@@ -1,13 +1,14 @@
+import { Elem } from 'dwayne';
 import {
   isEmpty,
   isFunction,
   isRegExp,
+  isString,
+  isNil,
   assign,
   find,
   iterate,
-  keysCount,
-  allKeysCount,
-  setProto
+  decode
 } from './utils';
 import Route from './Route';
 import {
@@ -19,18 +20,41 @@ import resolveURL from './resolveURL';
 
 let pushed;
 
+/**
+ * @typedef {Object} URLOptions
+ * @property {Object} [query = {}] - URL query params.
+ * @property {Object} [params = {}] - URL params.
+ * @property {String} [hash = ''] - URL hash.
+ */
+
+/**
+ * @class DwayneRouter
+ * @public
+ */
 class Router {
-  _initialized = false;
   _routes = [];
   _currentRoutes = [];
   _subscribers = [];
+  _rootRoute = null;
+  _defaultRoute = null;
+  _redirectRoute = null;
 
-  constructor(name) {
-    this.name = name;
-    this._baseRoute = new Route({
-      router: name,
-      abstract: true
+  constructor(routes, options) {
+    const {
+      handleTrailingSlash,
+      useOwnChildren
+    } = options;
+
+    this._handleTrailingSlash = !!handleTrailingSlash;
+    this._useOwnChildren = !!useOwnChildren;
+
+    this._traverse({
+      $root: routes
     });
+    this._changeRoute();
+
+    window.addEventListener('popstate', this._onPopstate, false);
+    window.addEventListener('click', this._onClick, false);
   }
 
   _changeHistory(url, push) {
@@ -43,6 +67,7 @@ class Router {
 
       pushed = true;
     } catch (err) {
+      /* istanbul ignore next */
       location.href = url;
     }
   }
@@ -72,12 +97,10 @@ class Router {
       if (this._redirectRoute) {
         const {
           url,
-          encodeParams,
-          encodeQuery,
           redirectRouteIsNeededToPush
         } = this._redirectRoute;
 
-        return this._forward(constructURL(url, {}, {}, '', encodeParams, encodeQuery), redirectRouteIsNeededToPush);
+        return this._forward(constructURL(url, {}, {}, ''), redirectRouteIsNeededToPush);
       }
 
       currentRoute = null;
@@ -85,7 +108,6 @@ class Router {
     }
 
     const {
-      _baseRoute,
       _currentRoutes,
       _subscribers
     } = this;
@@ -107,7 +129,7 @@ class Router {
     if (currentRoute) {
       let currentParent = currentRoute;
 
-      while (currentParent !== parent && currentParent !== _baseRoute) {
+      while (currentParent !== parent && currentParent) {
         routesToLoad.unshift(currentParent);
         currentParent = currentParent.parent;
       }
@@ -117,18 +139,10 @@ class Router {
 
     this._currentRouteParams = currentRouteParams;
 
-    iterate(routesToLeave, ({ name }) => {
+    iterate(routesToLeave.concat(_currentRoutes), ({ name }) => {
       iterate(_subscribers, ({ name: Name, callback }) => {
         if (name === Name) {
-          callback(false);
-        }
-      });
-    });
-
-    iterate(_currentRoutes, ({ name }) => {
-      iterate(_subscribers, ({ name: Name, callback }) => {
-        if (name === Name) {
-          callback(true);
+          callback();
         }
       });
     });
@@ -139,9 +153,14 @@ class Router {
   }
 
   _findRouteByURL() {
-    const { _routes } = this;
-    const pathname = location.pathname || '/';
-    const search = location.search || '';
+    const {
+      _routes,
+      _defaultRoute
+    } = this;
+    const {
+      pathname,
+      search
+    } = location;
     let urlParams;
 
     find(_routes, (route) => {
@@ -154,51 +173,50 @@ class Router {
         pathMatch,
         params,
         paramsValidators,
-        queryValidators,
-        decodeParams,
-        decodeQuery
+        queryValidators
       } = route;
-      const resolved = resolveURL(decodeQuery);
+      const resolved = resolveURL();
       const {
         query,
         hash
       } = resolved;
       const eventualParams = {};
-      const match = pathMatch(
-        (pathname.replace(/\/$/, '') || '/') +
-        (isRegExp(routeURL) ? search : '')
-      );
+      const match = pathMatch(pathname + (isRegExp(routeURL) ? search : ''));
 
       if (!match) {
         return;
       }
 
-      /* eslint guard-for-in: 0 */
-      for (const param in queryValidators) {
-        if (!query[param] || !queryValidators[param](query[param])) {
-          return;
+      const invalidQuery = iterate(queryValidators, (validator, param) => {
+        if (!validator(query[param])) {
+          return true;
         }
+      });
+
+      if (invalidQuery) {
+        return;
       }
 
-      match.shift();
-
-      for (const param in params) {
-        const value = match[params[param]];
+      const invalidParams = iterate(params, (index, param) => {
+        const value = match[index];
         const validator = paramsValidators[param];
-        const eventualValue = decodeParams
-          ? decodeURIComponent(value)
-          : value;
+        const eventualValue = decode(value);
 
-        if (!validator(eventualValue)) {
-          return;
+        if (validator && !validator(eventualValue)) {
+          return true;
         }
 
         eventualParams[param] = eventualValue;
+      });
+
+      if (invalidParams) {
+        return;
       }
 
       urlParams = {
         route,
         params: eventualParams,
+        additionalParams: match,
         query: { ...query },
         hash
       };
@@ -210,8 +228,6 @@ class Router {
       return urlParams;
     }
 
-    const { _defaultRoute } = this;
-
     if (!_defaultRoute) {
       return;
     }
@@ -219,11 +235,12 @@ class Router {
     const {
       query,
       hash
-    } = resolveURL(_defaultRoute.decodeQuery);
+    } = resolveURL();
 
     return {
       route: _defaultRoute,
       params: {},
+      additionalParams: [],
       query: { ...query },
       hash
     };
@@ -234,218 +251,204 @@ class Router {
     this._changeRoute();
   }
 
-  _init() {
-    if (this._initialized) {
-      return;
-    }
-
-    this._initialized = true;
-
-    const {
-      _baseRoute,
-      _routes,
-      _defaultRoute,
-      _redirectRoute,
-      _rootRoute,
-      name: routerName
-    } = this;
-
-    if (!_rootRoute) {
-      throw new Error(`No root route for "${ routerName }" router was provided! (at Router#_init)`);
-    }
-
-    iterate(_routes, (route) => {
+  _traverse(routes, parent) {
+    iterate(routes, (opts, name) => {
       const {
-        parentName,
-        name
-      } = route;
-      const isRootRoute = route === _rootRoute;
-      const ParentName = parentName || _rootRoute.name;
-      let parent = find(_routes, ({ name }) => name === ParentName);
-
-      if (isRootRoute) {
-        parent = _baseRoute;
-      }
-
-      if (!parent) {
-        throw new Error(`No such parent route ("${ ParentName }") found for the route ("${ name }" in "${ routerName }" router)! (at Router#_init)`);
-      }
-
-      if (!parent.abstract && !isRootRoute) {
-        throw new Error(`Parent route must be abstract (for "${ name }" route in "${ routerName }" router)! (at Router#_init)`);
-      }
-
-      if (!isRootRoute) {
-        route.parentName = ParentName;
-      }
-
-      route.parent = parent;
-    });
-
-    iterate(_routes, (route) => {
+        _defaultRoute,
+        _redirectRoute
+      } = this;
       const {
-        name,
-        parent: {
-          params: parentParams,
-          paramsValidators: parentParamsValidators,
-          queryValidators: parentQueryValidators,
-          path
-        },
+        path,
+        block,
+        abstract,
+        fallback,
+        replace = true,
+        default: isDefault,
         params,
-        paramsValidators,
-        queryValidators,
-        relativeURL,
-        relativePath
-      } = route;
-      const isRegExpPath = isRegExp(relativePath);
-      const isDynamicPath = isRegExpPath || isFunction(relativePath);
-      let proto = route;
-      let count = 0;
-      let newPath = isDynamicPath
-        ? ''
-        : relativePath;
-      let newURL = isDynamicPath
-        ? ''
-        : relativeURL;
+        query,
+        children
+      } = opts;
 
-      if (isRegExp(path)) {
-        throw new Error(`URL regexp route cannot be extended (for "${ name }" route in "${ routerName }" router)! (at Router#_init)`);
+      if (!name) {
+        throw new Error('Route must have a non-empty string "name" property! (at Router#_traverse)');
       }
 
-      if (isFunction(path)) {
-        throw new Error(`URL function route cannot be extended (for "${ name }" route in "${ routerName }" router)! (at Router#_init)`);
+      if (this._findRouteByName(name)) {
+        throw new Error(`Route must have unique "name" property ("${ name }")! (at Router#_traverse)`);
       }
 
-      while (proto = proto.parent) {
-        count += keysCount(proto.params);
-        newPath = proto.relativePath + newPath;
-        newURL = proto.relativeURL + newURL;
-
-        proto.children.push(route);
+      if (_defaultRoute && isDefault) {
+        throw new Error(`There can't be two default routes ("${ _defaultRoute.name }" and "${ name }")! (at Router#_traverse)`);
       }
 
-      const wholePath = newPath.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
-
-      newPath = isDynamicPath
-        ? new RegExp(`^${ wholePath }([\\s\\S]+)$`)
-        : new RegExp(`^${ wholePath }$`);
-      newURL = isDynamicPath
-        ? newPath
-        : newURL.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
-
-      setProto(params, parentParams);
-      setProto(paramsValidators, parentParamsValidators);
-      setProto(queryValidators, parentQueryValidators);
-
-      iterate(params, (value, key) => {
-        params[key] += count;
-      });
-
-      if (
-        (route === _defaultRoute || route === _redirectRoute)
-        && (!isEmpty(params) || !isEmpty(query))
-      ) {
-        throw new Error(`Default and fallback routes must not have URL or query params (for "${ name }" route in "${ routerName }" router)! (at Router#_init)`);
+      if (_redirectRoute && fallback) {
+        throw new Error(`There can't be two fallback routes ("${ _redirectRoute.name }" and "${ name }")! (at Router#_traverse)`);
       }
 
-      route.url = newURL;
-
-      const paramsCount = allKeysCount(params);
-
-      if (isDynamicPath) {
-        route.pathMatch = (path) => {
-          const match = newPath.test(path);
-
-          if (!match) {
-            return;
-          }
-
-          const rest = match[paramsCount + 1];
-          const isMatch = isRegExpPath
-            ? relativePath.test(rest)
-            : relativePath(rest);
-
-          if (isMatch) {
-            return match;
-          }
-        };
-      } else {
-        route.pathMatch = (path) => (
-          path.match(newPath)
-        );
-      }
-    });
-
-    this._changeRoute();
-
-    window.addEventListener('popstate', () => {
-      if (location.href !== initialURL) {
-        pushed = true;
+      if (!abstract && !block) {
+        throw new Error(`You must specify a block for a non-abstract route to render into ("${ name }")! (at Router#_traverse)`);
       }
 
-      if (pushed) {
-        this._changeRoute();
-      }
-    }, false);
-
-    window.addEventListener('click', (e) => {
-      let closestLink = e.target;
-
-      while (closestLink && closestLink.tagName !== 'A') {
-        closestLink = closestLink.parentNode;
+      if (parent && !parent.abstract) {
+        throw new Error(`Parent route must be abstract (for "${ name }" route)! (at Router#_traverse)`);
       }
 
-      if (
-        closestLink
-        && closestLink.getAttribute('target') !== '_blank'
-        && !closestLink.hasAttribute('no-routing')
-        && !e.noRouting
-      ) {
-        const push = !closestLink.hasAttribute('replace');
-        const href = closestLink.getAttribute('href') || '';
+      if (parent && !isString(parent.url)) {
+        throw new Error(`URL regexp and function routes cannot be extended (for "${ name }" route)! (at Router#_traverse)`);
+      }
 
-        e.preventDefault();
+      if (fallback || isDefault) {
+        if (abstract) {
+          throw new Error('Default and fallback routes can\'t be abstract! (at Router#_traverse)');
+        }
 
-        if (location.pathname + location.search + location.hash !== href) {
-          this._forward(href, push);
+        if (isRegExp(path)) {
+          throw new Error('Default and fallback routes can\'t have a regexp path! (at Router#_traverse)');
+        }
+
+        if (isFunction(path)) {
+          throw new Error('Default and fallback routes can\'t have a function path! (at Router#_traverse)');
         }
       }
-    }, false);
+
+      const route = new Route(assign({}, opts, {
+        name,
+        parent,
+        router: this
+      }));
+
+      if (fallback || isDefault) {
+        if (
+          !isEmpty(route.params)
+          || (parent && !isEmpty(parent.params))
+          || !isEmpty(query)
+          || (parent && !isEmpty(parent.query))
+        ) {
+          throw new Error('Default and fallback routes and their parents can\'t have URL or query params! (at Router#_traverse)');
+        }
+      }
+
+      if (name === '$root') {
+        this._rootRoute = route;
+      }
+
+      if (fallback) {
+        route.redirectRouteIsNeededToPush = !replace;
+        this._redirectRoute = route;
+      }
+
+      if (isDefault) {
+        this._defaultRoute = route;
+      }
+
+      this._routes.push(route);
+      this._traverse(children, route);
+    });
   }
 
   _subscribe(name, callback) {
     const { _subscribers } = this;
-
-    _subscribers.push({
+    const subscribeObject = {
       name,
       callback
-    });
+    };
+
+    _subscribers.push(subscribeObject);
 
     return () => {
-      const index = _subscribers.indexOf(callback);
+      const index = _subscribers.indexOf(subscribeObject);
 
+      /* istanbul ignore else */
       if (index !== -1) {
         _subscribers.splice(index, 1);
       }
     };
   }
 
+  _remove() {
+    window.removeEventListener('popstate', this._onPopstate, false);
+    window.removeEventListener('click', this._onClick, false);
+  }
+
+  _onPopstate = () => {
+    /* istanbul ignore else */
+    if (location.href !== initialURL) {
+      pushed = true;
+    }
+
+    /* istanbul ignore else */
+    if (pushed) {
+      this._changeRoute();
+    }
+  };
+
+  _onClick = (e) => {
+    const $link = new Elem(e.target).closest('a');
+    const href = $link.attr('href');
+
+    if (
+      !$link.length
+      || $link.attr('target') === '_blank'
+      || $link.hasAttr('no-routing')
+      || isNil(href)
+      || (
+        href.indexOf('/') !== 0
+        && href.indexOf(location.origin) !== 0
+      )
+    ) {
+      return;
+    }
+
+    const push = !$link.hasAttr('replace');
+
+    e.preventDefault();
+
+    if (
+      location.pathname + location.search + location.hash !== href
+      && !$link.hasAttr('disabled')
+    ) {
+      this._forward(href, push);
+    }
+  };
+
+  /**
+   * @method DwayneRouter#buildURL
+   * @public
+   * @param {String} name - Route name.
+   * @param {URLOptions} [options = {}] - URL options.
+   * @returns {String} Constructed URL.
+   * @description Method for constructing an URL for the route that is specified by the first argument
+   * with the options provided in the second one.
+   *
+   * @example
+   * // URL: '/route/:param'
+   *
+   * router.buildURL('route', {
+   *   params: {
+   *     param: 'value'
+   *   },
+   *   query: {
+   *     param: 'value'
+   *   },
+   *   hash: 'hash'
+   * }); // '/route/value?param=value#hash'
+   */
   buildURL(name, options = {}) {
     const { _routes } = this;
     const route = find(_routes, ({ name: n }) => n === name);
 
     if (!route) {
-      throw new Error(`There are no routes with name "${ name }"! (at router.buildURL)`);
+      throw new Error(`There are no routes with name "${ name }"! (at Router#buildURL)`);
     }
 
-    const {
-      url,
-      encodeParams,
-      encodeQuery
-    } = route;
+    if (route.abstract) {
+      throw new Error(`URL can only be built for non-abstract routes (name: "${ name }")! (at Router#buildURL)`);
+    }
 
-    if (isRegExp(url)) {
-      throw new Error('URL can be built only from the string URLs! (at router.buildURL)');
+    const { url } = route;
+
+    if (!isString(url)) {
+      throw new Error(`URL can only be built from string URLs (name: "${ name }")! (at Router#buildURL)`);
     }
 
     const {
@@ -454,29 +457,109 @@ class Router {
       hash = ''
     } = options;
 
-    return constructURL(url, params, query, hash, encodeParams, encodeQuery);
+    return constructURL(url, params, query, hash);
   }
 
+  /**
+   * @method DwayneRouter#go
+   * @public
+   * @param {String} name - Route name.
+   * @param {URLOptions} [options = {}] - URL options.
+   * @returns {void}
+   * @description Method for navigating to the route that is specified by the first argument
+   * with the options provided in the second one.
+   *
+   * @example
+   * router.go('route', {
+   *   params: {
+   *     param: 'value'
+   *   },
+   *   query: {
+   *     param: 'value'
+   *   },
+   *   hash: 'hash'
+   * });
+   */
   go(name, options) {
     this._forward(this.buildURL(name, options), true);
   }
 
+  /**
+   * @method DwayneRouter#goToURL
+   * @public
+   * @param {String} url - URL to navigate to.
+   * @returns {void}
+   * @description Method for navigating to an URL.
+   *
+   * @example
+   * router.goToURL('/route');
+   */
   goToURL(url) {
     this._forward(url, true);
   }
 
+  /**
+   * @method DwayneRouter#pushURL
+   * @public
+   * @param {String} url - URL to push.
+   * @returns {void}
+   * @description Method for pushing an URL without re-rendering the layout.
+   *
+   * @example
+   * router.pushURL('/route');
+   */
   pushURL(url) {
     this._changeHistory(url, true);
   }
 
+  /**
+   * @method DwayneRouter#redirect
+   * @public
+   * @param {String} name - Route name.
+   * @param {URLOptions} [options = {}] - URL options.
+   * @returns {void}
+   * @description Method for redirecting to the route that is specified by the first argument
+   * with the options provided in the second one (the method replaces current URL with the new one).
+   *
+   * @example
+   * router.redirect('route', {
+   *   params: {
+   *     param: 'value'
+   *   },
+   *   query: {
+   *     param: 'value'
+   *   },
+   *   hash: 'hash'
+   * });
+   */
   redirect(name, options) {
     this._forward(this.buildURL(name, options));
   }
 
+  /**
+   * @method DwayneRouter#redirectToURL
+   * @public
+   * @param {String} url - URL to redirect to.
+   * @returns {void}
+   * @description Method for redirecting to an URL (the method replaces current URL with the new one).
+   *
+   * @example
+   * router.redirectToURL('/route');
+   */
   redirectToURL(url) {
     this._forward(url);
   }
 
+  /**
+   * @method DwayneRouter#pushURL
+   * @public
+   * @param {String} url - URL to replace with.
+   * @returns {void}
+   * @description Method for replacing the URL without re-rendering the layout.
+   *
+   * @example
+   * router.pushURL('/route');
+   */
   replaceURL(url) {
     this._changeHistory(url);
   }

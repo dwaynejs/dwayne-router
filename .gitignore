@@ -1,8 +1,9 @@
 .idea/
 node_modules/
 
-/config.json
-/bundle.js
-/bundle.js.map
-/test.js
-/test.js.map
+lib/
+coverage/
+
+entry.js
+bundle.js
+bundle.js.map

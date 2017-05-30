@@ -1,25 +1,21 @@
 .idea/
 node_modules/
+
+src/
 test/
+coverage/
 
-/config.json
-/bundle.js
-/bundle.js.map
-/test.js
-/test.js.map
+bundle.js
+bundle.js.map
 
-/.babelrc
-/.editorconfig
-/.eslintrc
+.babelrc
+.editorconfig
+.eslintrc
 
-/config.example.json
-/rollup.build.config.js
-/rollup.dev.config.js
-/rollup.test.config.js
+rollup.build.config.js
+rollup.dev.config.js
+rollup.test.config.js
 
-/entry.js
-/gulpfile.js
-/server.js
+entry.js
 
-/index.html
-/test.html
+index.html

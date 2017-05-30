@@ -2,18 +2,20 @@ import {
   isRegExp,
   isArray,
   isFunction,
-  iterate
+  isString,
+  iterate,
+  create
 } from './utils';
 
 export default (validators) => {
-  const eventualValidators = Object.create(null);
+  const eventualValidators = create(null);
 
   iterate(validators, (validator, name) => {
     let eventualValidator;
 
     if (isRegExp(validator)) {
       eventualValidator = (value) => (
-        validator.test(value)
+        isString(value) && validator.test(value)
       );
     } else if (isArray(validator)) {
       eventualValidator = (value) => (

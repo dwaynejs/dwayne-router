@@ -1,63 +1,41 @@
-import {
-  routers,
-  DEFAULT_ROUTER_NAME
-} from '../constants';
+import RouterInternal from '../Router';
+import RouteBlock from './RouteBlock';
 
-export function Router(Block) {
-  return class Router extends Block {
-    static template = html`
-      <d-if if="{isCurrentRoute && Block}">
-        <d-block Constructor="{Block}" route="{routeParams}" d-rest="{restArgs}"/>
-      </d-if>
-    `;
+export class Router extends RouteBlock {
+  constructor(opts) {
+    super(opts);
 
-    constructor(opts) {
-      super(opts);
+    const {
+      routes,
+      ...options
+    } = this.args;
+    const router = new RouterInternal(routes, options);
+    const route = router._rootRoute;
+    const onChangeRoute = () => {
+      this.routeParams = router._currentRouteParams;
+      this.globals.route = router._currentRouteParams;
+      this.isCurrentRoute = router._currentRoutes.indexOf(route) !== -1;
+    };
 
-      const {
-        name = DEFAULT_ROUTER_NAME
-      } = this.args;
-      const router = routers[name];
+    // console.log(router);
 
-      if (router) {
-        router._init();
-        console.log(router);
+    const {
+      name,
+      block
+    } = route;
 
-        const {
-          name,
-          Block
-        } = router._rootRoute;
+    this.globals.router = router;
+    this.Block = block;
+    this.router = router;
+    this.route = route;
+    this.unsubscribe = router._subscribe(name, onChangeRoute);
 
-        this.globals.router = router;
-        this.globals.route = null;
-        this.Block = Block;
-        this.isCurrentRoute = router._currentRoutes.indexOf(router._rootRoute) !== -1;
-        this.routeParams = router._currentRouteParams;
-        this.unsubscribe = router._subscribe(name, (isCurrentRoute) => {
-          this.isCurrentRoute = isCurrentRoute;
-          this.routeParams = router._currentRouteParams;
-          this.globals.route = router._currentRouteParams;
-        });
-      } else {
-        console.error(`No router with the "${ name }" name was provided! (at new Router)`);
-      }
-    }
+    onChangeRoute();
+  }
 
-    afterConstruct() {
-      this.watch('args', () => {
-        const {
-          name,
-          ...restArgs
-        } = this.args;
+  beforeRemove() {
+    super.beforeRemove();
 
-        this.restArgs = restArgs;
-      });
-    }
-
-    beforeRemove() {
-      if (this.unsubscribe) {
-        this.unsubscribe();
-      }
-    }
-  };
+    this.router._remove();
+  }
 }
