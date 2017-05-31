@@ -5,44 +5,40 @@ import { Router, Link } from '../src';
 let root;
 const container = doc.create('div');
 const $routes = {
-  abstract: true,
-  block: class extends Block {
-    static html = html`
-      <Link
-        to="route"
-        params="{params}"
-        query="{query}"
-        hash="{hash}"
-      >
-        Link 1
-      </Link>
+  home: {
+    block: class extends Block {
+      static html = html`
+        <Link
+          to="route"
+          params="{params}"
+          query="{query}"
+          hash="{hash}"
+        >
+          Link 1
+        </Link>
+  
+        <Link href="{href}">
+          Link 2
+        </Link>
+      `;
 
-      <Link href="{href}">
-        Link 2
-      </Link>
-    `;
+      params = {
+        param: 'value'
+      };
+      query = {
+        param: 'value'
+      };
+      hash = 'hash';
+      href = '/route/val';
 
-    params = {
-      param: 'value'
-    };
-    query = {
-      param: 'value'
-    };
-    hash = 'hash';
-    href = '/route/val';
-
-    afterConstruct() {
-      root = this;
+      afterConstruct() {
+        root = this;
+      }
     }
   },
-  children: {
-    home: {
-      block: []
-    },
-    route: {
-      path: '/route/:param',
-      block: []
-    }
+  route: {
+    path: '/route/:param',
+    block: []
   }
 };
 

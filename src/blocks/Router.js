@@ -1,7 +1,14 @@
-import RouterInternal from '../Router';
-import RouteBlock from './RouteBlock';
+import { Block, Children } from 'dwayne';
+import RouterInternal from '../RouterInternal';
+import { Route } from './Route';
 
-export class Router extends RouteBlock {
+export class Router extends Block {
+  static html = html`
+    <Route name="$root">
+      <Children/>
+    </Route>
+  `;
+
   constructor(opts) {
     super(opts);
 
@@ -10,25 +17,13 @@ export class Router extends RouteBlock {
       ...options
     } = this.args;
     const router = new RouterInternal(routes, options);
-    const route = router._rootRoute;
     const onChangeRoute = () => {
-      this.routeParams = router._currentRouteParams;
       this.globals.route = router._currentRouteParams;
-      this.isCurrentRoute = router._currentRoutes.indexOf(route) !== -1;
     };
 
-    // console.log(router);
-
-    const {
-      name,
-      block
-    } = route;
-
-    this.globals.router = router;
-    this.Block = block;
     this.router = router;
-    this.route = route;
-    this.unsubscribe = router._subscribe(name, onChangeRoute);
+    this.globals.router = router;
+    this.unsubscribe = router._subscribe('', onChangeRoute);
 
     onChangeRoute();
   }

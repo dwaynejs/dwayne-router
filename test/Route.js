@@ -1,93 +1,94 @@
 import { strictEqual } from 'assert';
-import { test } from 'dwayne-test-utils';
 import { Block, Children, initApp, removeApp, doc } from 'dwayne';
 import { Router, Route } from '../src';
 
 let router;
 const container = doc.create('div');
 const $routes = {
-  abstract: true,
-  block: class extends Block {
-    static html = html`<Children/>`;
+  root: {
+    abstract: true,
+    block: class extends Block {
+      static html = html`<Children/>`;
 
-    afterConstruct() {
-      router = this.args.router;
-    }
-  },
-  children: {
-    home: {
-      path: '/',
-      block: html`<h1>Home page</h1>`
+      afterConstruct() {
+        router = this.args.router;
+      }
     },
-    404: {
-      path: '/404',
-      fallback: true,
-      block: html`<p>Page not found</p>`
-    },
-    parent: {
-      abstract: true,
-      path: '/parent',
-      children: {
-        regexp: {
-          path: /^\/regexp\/([\s\S]+)\/([\s\S]+)\??/,
-          block: html`<i>Regexp additional params: [{args.route.additionalParams.join(', ')}]</i>`
-        },
-        func: {
-          path(path) {
-            const match = path.match(/^\/func\/([\s\S]+)\/([\s\S]+)\??/);
-
-            return match && match.slice(1);
+    children: {
+      home: {
+        path: '/',
+        block: html`<h1>Home page</h1>`
+      },
+      404: {
+        path: '/404',
+        fallback: true,
+        block: html`<p>Page not found</p>`
+      },
+      parent: {
+        abstract: true,
+        path: '/parent',
+        children: {
+          regexp: {
+            path: /^\/regexp\/([\s\S]+)\/([\s\S]+)\??/,
+            block: html`<i>Regexp additional params: [{args.route.additionalParams.join(', ')}]</i>`
           },
-          block: html`<span>Func additional params: [{args.route.additionalParams.join(', ')}]</span>`
+          func: {
+            path(path) {
+              const match = path.match(/^\/func\/([\s\S]+)\/([\s\S]+)\??/);
+
+              return match && match.slice(1);
+            },
+            block: html`<span>Func additional params: [{args.route.additionalParams.join(', ')}]</span>`
+          }
         }
-      }
-    },
-    trailingSlash: {
-      path: '/trailing-slash',
-      handleTrailingSlash: true,
-      block: html`<q>Trailing slash</q>`
-    },
-    params: {
-      path: '/params/:param1/ix-:param2/:param3',
+      },
+      trailingSlash: {
+        path: '/trailing-slash',
+        handleTrailingSlash: true,
+        block: html`<q>Trailing slash</q>`
+      },
       params: {
-        param1(value) {
-          const parsed = parseInt(value);
+        path: '/params/:param1/ix-:param2/:param3',
+        params: {
+          param1(value) {
+            const parsed = parseInt(value);
 
-          return parsed || parsed === 0;
+            return parsed || parsed === 0;
+          },
+          param2: ['1', '2', '3']
         },
-        param2: ['1', '2', '3']
-      },
-      query: {
-        param4: 'qwerty',
-        param5: /^(?:ab|cd)$/
-      },
-      block: class extends Block {
-        static html = html`
-          <b>Params: {JSON.stringify([
-            args.route.params.param1,
-            args.route.params.param2,
-            args.route.params.param3,
-            args.route.query.param4,
-            args.route.query.param5,
-            args.route.query.param6,
-            args.route.query.param7
-          ])}</b>
-        `;
+        query: {
+          param4: 'qwerty',
+          param5: /^(?:ab|cd)$/
+        },
+        block: class extends Block {
+          static html = html`
+            <b>Params: {JSON.stringify([
+              args.route.params.param1,
+              args.route.params.param2,
+              args.route.params.param3,
+              args.route.query.param4,
+              args.route.query.param5,
+              args.route.query.param6,
+              args.route.query.param7
+            ])}</b>
+          `;
 
-        JSON = JSON;
+          JSON = JSON;
+        }
+      },
+      noTransforming: {
+        decodeQuery: false,
+        encodeQuery: false,
+        decodeParams: false,
+        encodeParams: false,
+        path: '/no-transforming/:param',
+        block: html`<h3>Params: [{[args.route.params.param, args.route.query.param].join(', ')}]</h3>`
+      },
+      transforming: {
+        path: '/transforming/:param',
+        block: html`<h3>Params: [{[args.route.params.param, args.route.query.param].join(', ')}]</h3>`
       }
-    },
-    noTransforming: {
-      decodeQuery: false,
-      encodeQuery: false,
-      decodeParams: false,
-      encodeParams: false,
-      path: '/no-transforming/:param',
-      block: html`<h3>Params: [{[args.route.params.param, args.route.query.param].join(', ')}]</h3>`
-    },
-    transforming: {
-      path: '/transforming/:param',
-      block: html`<h3>Params: [{[args.route.params.param, args.route.query.param].join(', ')}]</h3>`
     }
   }
 };
@@ -112,9 +113,10 @@ describe('it should test Route block', () => {
   it('should be able to render default route', () => {
     const container = doc.create('div');
     const $routes = {
-      default: true,
-      path: '/not-found',
-      block: html`<h2>Not found</h2>`
+      default: {
+        default: true,
+        block: html`<h2>Not found</h2>`
+      }
     };
 
     initApp(htmlScopeless`<Router routes="{$routes}"/>`, container);
@@ -152,7 +154,9 @@ describe('it should test Route block', () => {
   it('should log an error with a non-existent route name', (done) => {
     const container = doc.create('div');
     const $routes = {
-      block: html`<Route name="non-existent"/>`
+      home: {
+        block: html`<Route name="non-existent"/>`
+      }
     };
 
     console.error = (message) => {

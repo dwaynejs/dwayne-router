@@ -79,7 +79,7 @@ export function iterate(object, callback) {
 
   for (const key in object) {
     /* istanbul ignore else */
-    if (object::hasOwnProperty(key)) {
+    if (hasOwn(object, key)) {
       /* istanbul ignore if */
       if (array && iterated++ >= length) {
         break;
@@ -122,10 +122,26 @@ export function keysCount(object) {
   return count;
 }
 
+export function hasOwn(object, key) {
+  return object::hasOwnProperty(key);
+}
+
 export function get(object, key, defaultValue) {
-  return object::hasOwnProperty(key)
+  return hasOwn(object, key)
     ? object[key]
     : defaultValue;
+}
+
+export function omit(object, paths) {
+  const newObject = {};
+
+  iterate(object, (value, key) => {
+    if (paths.indexOf(key) === -1) {
+      newObject[key] = value;
+    }
+  });
+
+  return newObject;
 }
 
 export const encode = encodeURIComponent;

@@ -12,6 +12,7 @@ bundle.js.map
 .editorconfig
 .eslintrc
 
+karma.conf.js
 rollup.build.config.js
 rollup.dev.config.js
 rollup.test.config.js

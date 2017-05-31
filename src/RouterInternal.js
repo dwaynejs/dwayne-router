@@ -8,9 +8,11 @@ import {
   assign,
   find,
   iterate,
+  hasOwn,
   decode
 } from './utils';
-import Route from './Route';
+import Route from './RouteInternal';
+import RouteParams from './RouteParams';
 import {
   location,
   initialURL
@@ -28,28 +30,30 @@ let pushed;
  */
 
 /**
- * @class DwayneRouter
+ * @class RouterInternal
  * @public
  */
-class Router {
+class RouterInternal {
   _routes = [];
   _currentRoutes = [];
   _subscribers = [];
-  _rootRoute = null;
   _defaultRoute = null;
   _redirectRoute = null;
 
   constructor(routes, options) {
     const {
-      handleTrailingSlash,
-      useOwnChildren
+      handleTrailingSlash = false,
+      useOriginalChildren = false
     } = options;
 
     this._handleTrailingSlash = !!handleTrailingSlash;
-    this._useOwnChildren = !!useOwnChildren;
+    this._useOriginalChildren = !!useOriginalChildren;
 
     this._traverse({
-      $root: routes
+      $root: {
+        abstract: true,
+        children: routes
+      }
     });
     this._changeRoute();
 
@@ -78,21 +82,8 @@ class Router {
     let currentRouteParams;
 
     if (route) {
-      ({
-        route: currentRoute,
-        ...currentRouteParams
-      } = route);
-      assign(currentRouteParams, {
-        name: currentRoute.name,
-        host: location.host,
-        hostname: location.hostname,
-        href: location.href,
-        origin: location.origin,
-        pathname: location.pathname,
-        port: location.port,
-        protocol: location.protocol,
-        search: location.search
-      });
+      currentRoute = route.route;
+      currentRouteParams = new RouteParams(route);
     } else {
       if (this._redirectRoute) {
         const {
@@ -139,6 +130,12 @@ class Router {
 
     this._currentRouteParams = currentRouteParams;
 
+    iterate(_subscribers, ({ name, callback }) => {
+      if (!name) {
+        callback();
+      }
+    });
+
     iterate(routesToLeave.concat(_currentRoutes), ({ name }) => {
       iterate(_subscribers, ({ name: Name, callback }) => {
         if (name === Name) {
@@ -164,7 +161,7 @@ class Router {
     let urlParams;
 
     find(_routes, (route) => {
-      if (route.abstract) {
+      if (route.abstract || route === _defaultRoute) {
         return;
       }
 
@@ -297,17 +294,21 @@ class Router {
         throw new Error(`URL regexp and function routes cannot be extended (for "${ name }" route)! (at Router#_traverse)`);
       }
 
-      if (fallback || isDefault) {
-        if (abstract) {
-          throw new Error('Default and fallback routes can\'t be abstract! (at Router#_traverse)');
-        }
+      if (isDefault && hasOwn(opts, 'path')) {
+        throw new Error('Default route can\'t have a path! (at Router#_traverse)');
+      }
 
+      if ((fallback || isDefault) && abstract) {
+        throw new Error('Default and fallback routes can\'t be abstract! (at Router#_traverse)');
+      }
+
+      if (fallback) {
         if (isRegExp(path)) {
-          throw new Error('Default and fallback routes can\'t have a regexp path! (at Router#_traverse)');
+          throw new Error('Fallback route can\'t have a regexp path! (at Router#_traverse)');
         }
 
         if (isFunction(path)) {
-          throw new Error('Default and fallback routes can\'t have a function path! (at Router#_traverse)');
+          throw new Error('Fallback route can\'t have a function path! (at Router#_traverse)');
         }
       }
 
@@ -326,10 +327,6 @@ class Router {
         ) {
           throw new Error('Default and fallback routes and their parents can\'t have URL or query params! (at Router#_traverse)');
         }
-      }
-
-      if (name === '$root') {
-        this._rootRoute = route;
       }
 
       if (fallback) {
@@ -412,7 +409,7 @@ class Router {
   };
 
   /**
-   * @method DwayneRouter#buildURL
+   * @method RouterInternal#buildURL
    * @public
    * @param {String} name - Route name.
    * @param {URLOptions} [options = {}] - URL options.
@@ -461,7 +458,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#go
+   * @method RouterInternal#go
    * @public
    * @param {String} name - Route name.
    * @param {URLOptions} [options = {}] - URL options.
@@ -485,7 +482,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#goToURL
+   * @method RouterInternal#goToURL
    * @public
    * @param {String} url - URL to navigate to.
    * @returns {void}
@@ -499,7 +496,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#pushURL
+   * @method RouterInternal#pushURL
    * @public
    * @param {String} url - URL to push.
    * @returns {void}
@@ -513,7 +510,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#redirect
+   * @method RouterInternal#redirect
    * @public
    * @param {String} name - Route name.
    * @param {URLOptions} [options = {}] - URL options.
@@ -537,7 +534,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#redirectToURL
+   * @method RouterInternal#redirectToURL
    * @public
    * @param {String} url - URL to redirect to.
    * @returns {void}
@@ -551,7 +548,7 @@ class Router {
   }
 
   /**
-   * @method DwayneRouter#pushURL
+   * @method RouterInternal#pushURL
    * @public
    * @param {String} url - URL to replace with.
    * @returns {void}
@@ -565,4 +562,4 @@ class Router {
   }
 }
 
-export default Router;
+export default RouterInternal;

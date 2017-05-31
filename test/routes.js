@@ -6,10 +6,7 @@ describe('it should test different routes configs', () => {
   it('should not register a route without a block', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {}
-        }
+        route: {}
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
@@ -18,10 +15,7 @@ describe('it should test different routes configs', () => {
   it('should not register a route without a name', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          '': {}
-        }
+        '': {}
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
@@ -30,13 +24,10 @@ describe('it should test different routes configs', () => {
   it('should not register two routes with equal names', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            abstract: true,
-            children: {
-              route: {}
-            }
+        route: {
+          abstract: true,
+          children: {
+            route: {}
           }
         }
       };
@@ -47,16 +38,13 @@ describe('it should test different routes configs', () => {
   it('should not register two default routes', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            block: Block,
-            default: true
-          },
-          route2: {
-            block: Block,
-            default: true
-          }
+        route1: {
+          block: Block,
+          default: true
+        },
+        route2: {
+          block: Block,
+          default: true
         }
       };
 
@@ -66,33 +54,27 @@ describe('it should test different routes configs', () => {
   it('should not register two fallback routes', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            block: Block,
-            fallback: true
-          },
-          route2: {
-            block: Block,
-            fallback: true
-          }
+        route1: {
+          block: Block,
+          fallback: true
+        },
+        route2: {
+          block: Block,
+          fallback: true
         }
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
     }, /There can't be two fallback routes \("route1" and "route2"\)! \(at Router#_traverse\)/);
   });
-  it('should not register a route with not abstract parent', () => {
+  it('should not register a route with a non-abstract parent', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            block: Block,
-            children: {
-              route2: {
-                block: Block
-              }
+        route1: {
+          block: Block,
+          children: {
+            route2: {
+              block: Block
             }
           }
         }
@@ -104,15 +86,12 @@ describe('it should test different routes configs', () => {
   it('should not register a route with a parent that has a dynamic route', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            abstract: true,
-            path: /^\/$/,
-            children: {
-              route2: {
-                block: Block
-              }
+        route1: {
+          abstract: true,
+          path: /^\/$/,
+          children: {
+            route2: {
+              block: Block
             }
           }
         }
@@ -124,60 +103,61 @@ describe('it should test different routes configs', () => {
   it('should not register a default or fallback abstract route', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            abstract: true,
-            fallback: true
-          }
+        route: {
+          abstract: true,
+          default: true
         }
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
     }, /Default and fallback routes can't be abstract! \(at Router#_traverse\)/);
   });
-  it('should not register a default or fallback route with a regexp path', () => {
+  it('should not register a default route with a path', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            path: /^\/$/,
-            block: Block,
-            default: true
-          }
+        route: {
+          default: true,
+          path: '/',
+          block: Block
         }
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
-    }, /Default and fallback routes can't have a regexp path! \(at Router#_traverse\)/);
+    }, /Default route can't have a path! \(at Router#_traverse\)/);
   });
-  it('should not register a default or fallback route with a function path', () => {
+  it('should not register a fallback route with a regexp path', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            path() {},
-            block: Block,
-            default: true
-          }
+        route: {
+          path: /^\/$/,
+          block: Block,
+          fallback: true
         }
       };
 
       initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
-    }, /Default and fallback routes can't have a function path! \(at Router#_traverse\)/);
+    }, /Fallback route can't have a regexp path! \(at Router#_traverse\)/);
+  });
+  it('should not register a fallback route with a function path', () => {
+    throws(() => {
+      const routes = {
+        route: {
+          path() {},
+          block: Block,
+          fallback: true
+        }
+      };
+
+      initApp(htmlScopeless`<Router routes="{routes}"/>`, doc.create('div'));
+    }, /Fallback route can't have a function path! \(at Router#_traverse\)/);
   });
   it('should not register a default or fallback route with URL params', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            path: '/:id',
-            block: Block,
-            fallback: true
-          }
+        route: {
+          path: '/:id',
+          block: Block,
+          fallback: true
         }
       };
 
@@ -187,15 +167,12 @@ describe('it should test different routes configs', () => {
   it('should not register a default or fallback route with query params', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            block: Block,
-            query: {
-              a: ['1', '2']
-            },
-            fallback: true
-          }
+        route: {
+          block: Block,
+          query: {
+            a: ['1', '2']
+          },
+          fallback: true
         }
       };
 
@@ -205,16 +182,13 @@ describe('it should test different routes configs', () => {
   it('should not register a default or fallback route with a parent that has URL params', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            abstract: true,
-            path: '/:id',
-            children: {
-              route2: {
-                block: Block,
-                fallback: true
-              }
+        route1: {
+          abstract: true,
+          path: '/:id',
+          children: {
+            route2: {
+              block: Block,
+              fallback: true
             }
           }
         }
@@ -226,18 +200,15 @@ describe('it should test different routes configs', () => {
   it('should not register a default or fallback route with a parent that has query params', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route1: {
-            abstract: true,
-            query: {
-              a: ['1', '2']
-            },
-            children: {
-              route2: {
-                block: Block,
-                fallback: true
-              }
+        route1: {
+          abstract: true,
+          query: {
+            a: ['1', '2']
+          },
+          children: {
+            route2: {
+              block: Block,
+              fallback: true
             }
           }
         }
@@ -249,12 +220,9 @@ describe('it should test different routes configs', () => {
   it('should not register a route with invalid path', () => {
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            block: Block,
-            path: []
-          }
+        route: {
+          block: Block,
+          path: []
         }
       };
 
@@ -263,12 +231,9 @@ describe('it should test different routes configs', () => {
 
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            block: Block,
-            path: 'a/'
-          }
+        route: {
+          block: Block,
+          path: 'a/'
         }
       };
 
@@ -277,12 +242,9 @@ describe('it should test different routes configs', () => {
 
     throws(() => {
       const routes = {
-        abstract: true,
-        children: {
-          route: {
-            block: Block,
-            path: '//'
-          }
+        route: {
+          block: Block,
+          path: '//'
         }
       };
 

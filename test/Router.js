@@ -1,70 +1,71 @@
-import { strictEqual, throws } from 'assert';
+import { strictEqual, deepStrictEqual, throws } from 'assert';
 import { test, deferTest } from 'dwayne-test-utils';
-import { Block, initApp, removeApp, body } from 'dwayne';
+import { Block, Children, initApp, removeApp, body } from 'dwayne';
 import { Router, Route } from '../src';
 
 const container = body.create('div');
+const additional = {};
 let router;
-
-class Root extends Block {
-  static html = html`
-    <Route name="home"/>
-    <Route name="another"/>
-    <Route name="info"/>
-    <Route name="param"/>
-    <Route name="links"/>
-  `;
-
-  afterConstruct() {
-    router = this.args.router;
-  }
-}
-
-const Home = html`
-  <h1>Home page</h1>
-`;
-
-const Another = html`
-  <span>Another route</span>
-`;
-
-const Info = html`
-  <i>Info</i>
-`;
-
-const Links = html`
-  <a href="{args.router.buildURL('info')}" id="info"/>
-  <a href="javascript:__javascriptClickTestFunction__()" id="js"/>
-  <a href="{args.router.buildURL('info')}" id="disabled" disabled/>
-`;
+let homeArgs;
 
 const $routes = {
-  abstract: true,
-  block: Root,
-  children: {
-    home: {
-      path: '/',
-      block: Home
+  root: {
+    abstract: true,
+    block: class extends Block {
+      static html = html`
+        <Route name="home" a="{1}" b="{additional}"/>
+        <Route name="another"/>
+        <Route name="info"/>
+        <Route name="param"/>
+        <Route name="func"/>
+        <Route name="links"/>
+      `;
+
+      additional = additional;
+
+      afterConstruct() {
+        router = this.args.router;
+      }
     },
-    another: {
-      path: '/another',
-      block: Another
-    },
-    info: {
-      path: '/info',
-      block: Info
-    },
-    param: {
-      path: '/param/:param',
-      block: []
-    },
-    func: {
-      path() {},
-      block: []
-    },
-    links: {
-      path: '/links',
-      block: Links
+    children: {
+      home: {
+        path: '/',
+        block: class extends Block {
+          static html = html`<h1>Home page</h1>`;
+
+          afterConstruct() {
+            router = this.args.router;
+            homeArgs = { ...this.args };
+
+            delete homeArgs.router;
+            delete homeArgs.route;
+          }
+        }
+      },
+      another: {
+        path: '/another',
+        block: html`<span>Another route</span>`
+      },
+      info: {
+        path: '/info',
+        block: html`<i>Info</i>`
+      },
+      param: {
+        path: '/param/:param',
+        block: []
+      },
+      func: {
+        path() {},
+        block: []
+      },
+      links: {
+        path: '/links',
+        block: html`
+          <a href="{args.router.buildURL('info')}" id="info"/>
+          <a href="javascript:__javascriptClickTestFunction__()" id="js"/>
+          <a href="{args.router.buildURL('info')}" id="disabled" disabled/>
+        `
+      }
     }
   }
 };
@@ -93,6 +94,12 @@ describe('it should test Router block', () => {
   it('should render it', () => {
     strictEqual(container.html(), '<h1>Home page</h1>');
   });
+  it('should pass rest args to the block', () => {
+    deepStrictEqual({ ...homeArgs }, {
+      a: 1,
+      b: additional
+    });
+  });
   it('should be able to navigate', () => {
     router.go('another');
 
@@ -113,9 +120,9 @@ describe('it should test Router block', () => {
     strictEqual(container.html(), '<i>Info</i>');
 
     callback = () => {
-      test(done, () => {
+      deferTest(done, () => {
         strictEqual(container.html(), '<h1>Home page</h1>');
-      });
+      }, 30);
     };
 
     history.back();
@@ -181,18 +188,16 @@ describe('it should test Router block', () => {
       .find('#js')[0]
       .click();
   });
-  it('should be able to handle router link clicks', (done) => {
+  it('should be able to handle router link clicks', () => {
     router.go('links');
 
     strictEqual(container.find('#info').length, 1);
 
-    deferTest(done, () => {
-      strictEqual(container.html(), '<i>Info</i>');
-    }, 50);
-
     container
-      .find('#info')[0]
-      .click();
+      .find('#info')
+      .dispatch('click');
+
+    strictEqual(container.html(), '<i>Info</i>');
   });
   it('should be able to not handle disabled link clicks but still stop their default behaviour', (done) => {
     router.go('links');

@@ -1,6 +1,33 @@
-import RouteBlock from './RouteBlock';
+import { Block, If, Children, DynamicBlock, Elements, Rest } from 'dwayne';
+import { omit } from '../utils';
 
-export class Route extends RouteBlock {
+const watchArgs = ($) => (
+  omit($.args, ['name'])
+);
+
+export class Route extends Block {
+  static html = html`
+    <If if="{isCurrentRoute && Block}">
+      <DynamicBlock
+        type="{Block}"
+        route="{routeParams}"
+        router="{router}"
+        Rest="{restArgs}"
+      >
+        <If if="{router._useOriginalChildren}">
+          <Children/>
+        </If>
+        <If if="{!router._useOriginalChildren}">
+          <Elements
+            value="{route.childBlocks}"
+            parentScope="{this}"
+            parentTemplate="{this}"
+          />
+        </If>
+      </DynamicBlock>
+    </If>
+  `;
+
   constructor(opts) {
     super(opts);
 
@@ -23,4 +50,20 @@ export class Route extends RouteBlock {
       console.error(`No route with the "${ name }" name was provided! (at new Route)`);
     }
   }
+
+  afterConstruct() {
+    this.setRestArgs(
+      this.evaluate(watchArgs, this.setRestArgs)
+    );
+  }
+
+  beforeRemove() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
+  }
+
+  setRestArgs = (rest) => {
+    this.restArgs = rest;
+  };
 }

@@ -9,9 +9,9 @@ import {
 } from './utils';
 import constructValidators from './constructValidators';
 import getPath from './getPath';
-import { Route as RouteBlock } from './blocks/Route';
+import { Route } from './blocks/Route';
 
-class Route {
+class RouteInternal {
   constructor(options) {
     const {
       name,
@@ -116,11 +116,11 @@ class Route {
 
     if (parent) {
       parent.childBlocks.push({
-        type: RouteBlock,
+        type: Route,
         args: { name }
       });
     }
   }
 }
 
-export default Route;
+export default RouteInternal;

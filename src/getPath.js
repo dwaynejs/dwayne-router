@@ -43,9 +43,7 @@ export default (path, parent) => {
 
       let newURL = '';
       let newPath = '';
-      let paramsCount = parent
-        ? keysCount(parent.params) + 1
-        : 1;
+      let paramsCount = keysCount(parent.params) + 1;
       const pathParts = path.split(/\//);
 
       iterate(pathParts, (part, i) => {
