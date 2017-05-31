@@ -23,7 +23,7 @@ Route object describes a route with many options:
 
 ##### abstract
 
-Default: `false`.
+Default: `false`
 
 If the route is `abstract` it can't be rendered as a high-level
 route (the current route), but it's rendered when one of the
@@ -37,7 +37,7 @@ high-level route).
 
 ##### path
 
-Default: `'/'`.
+Default: `'/'`
 
 Describes a route `path`. Must start with a `'/'`. May be a
 string, regexp or a function.
@@ -49,23 +49,24 @@ parent path.
 An URL part (between slashes) may contain only one URL param.
 * regexp: may contain captured groups which will be
 remembered and passed as the `additionalParams` route option.
-* function: if returns truthy value, it passed as `additionalParams`
+* function: if returns truthy value, it's passed as `additionalParams`
 route option.
 
 ##### block
 
-Describes a block which is rendered when the path matches the
+Describes the block which is rendered when the path matches the
 page URL.
 
 If a route is `abstract`, the option may be not specified
-and it defaults to the block which renders its children.
+and it defaults to the block which renders its children
+(see [useOriginalChildren](#useoriginalchildren)).
 
 If it's not abstract, the option is required and must be a `Block`
 class or a template.
 
 ##### query
 
-Default: `{}`.
+Default: `{}`
 
 An object which describes query params validators. The keys are
 params keys and the values are validators. A validator may be one
@@ -74,18 +75,18 @@ of the following:
 * array: the param matches if it's one of the array values.
 * regexp: the param matches if it's present and if it matches the
 regexp.
-* function: the param matches if the function returns true.
+* function: the param matches if the function returns a truthy value.
 * the rest: the param matches if it equals to the validator.
 
 ##### params
 
-Default: `{}`.
+Default: `{}`
 
 Similar to the `query` option, but for URL params.
 
 ##### default
 
-Default: `false`.
+Default: `false`
 
 If `true`, this route is considered the default route. Each time
 the page URL doesn't match any routes, the default route is
@@ -93,6 +94,7 @@ rendered (without changing the page URL).
 
 Restrictions:
 
+* Default route can't have an URL.
 * There can't be two default routes.
 * Default route and its parents can't have a dynamic path
 (regexp or function).
@@ -100,26 +102,26 @@ Restrictions:
 
 ##### fallback
 
-Default: `false`.
+Default: `false`
 
-Similar to the `default` option, only it makes the router
+Similar to the [default](#default) option, only it makes the router
 change the page URL to the URL of the fallback route.
 
 The same restrictions (as for `default` route) stand for `fallback`
-route.
+route (except for the first one).
 
 ##### replace
 
-Default: `true`.
+Default: `true`
 
-Fallback route may have an additional `replace` option which,
-if `true`, the router replaces (see [History#replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History_API#The_replaceState()_method))
+Fallback route may have an additional `replace` option. If `true`,
+the router replaces (see [History#replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History_API#The_replaceState()_method))
 the page URL with the fallback URL, when the URL doesn't match any
 routes, and if `false` it pushes the URL (see [History#pushState](https://developer.mozilla.org/en-US/docs/Web/API/History_API#The_pushState()_method)).
 
 ##### children
 
-Default: `{}`.
+Default: `{}`
 
 Route children routes object. The keys are routes names (which
 must be unique) and the values are their descriptions. The root
@@ -129,7 +131,8 @@ A high-level (non-abstract) route can't have children.
 
 ##### handleTrailingSlash
 
-Default: `router.args.handleTrailingSlash`.
+Default: `router.args.handleTrailingSlash`
+(see [handleTrailingSlash](#handletrailingslash))
 
 If `true`, the router handles trailing slash URLs the same way
 as without them, and if `false`, it doesn't.
@@ -145,9 +148,9 @@ It accepts three args (all of them are not watched):
 
 ##### routes
 
-Required. A `route` object which describes the root route children.
-Basically it's the whole structure of all the routes that are
-handled by the router.
+Required. Describes the root route children.
+(see [route children](#children)). Basically it's the whole structure
+of all the routes that are handled by the router.
 
 Example:
 
@@ -182,7 +185,7 @@ const routes = {
     auth: {
       abstract: true,
       path: '/auth',
-      // no block field because the router can
+      // no block field because Route block can
       // automatically render its child routes
       children: {
         login: {
@@ -221,14 +224,14 @@ export default routes;
 
 ##### handleTrailingSlash
 
-Default: `false`.
+Default: `false`
 
 If true, the router will handle URLs with a trailing slash (such
 as `/login/`).
 
 ##### useOriginalChildren
 
-Default: `true`.
+Default: `false`
 
 If true, the router will pass the children of the `Router` and
 `Route` blocks to the corresponding block, which is specified in the
@@ -284,8 +287,9 @@ Though you may move this part of the layout to the Users block.
 
 ### Route
 
-The block renders the block, which is specified in the route
-description. It passes it the children (see [useOriginalChildren](#useoriginalchildren)).
+The block renders the block, which is specified in the route (pass
+the route name as an arg to this block) description. It passes it
+the children (see [useOriginalChildren](#useoriginalchildren)).
 
 It passes it two arguments as well:
 
@@ -302,9 +306,24 @@ specified by the args. There are two types of args:
 * usual `href` anchor attribute. the block just passes it to the
 anchor.
 * `to` (name of the route), `params`, `query` and `hash` args. They
-are passed to [RouterInternal#buildURL](buildurl).
+are passed to [RouterInternal#buildURL](#buildurl).
 
 The block also passes the children and the rest args to the anchor.
+
+Example:
+
+```html
+<Link href="/route">Link text</Link>
+
+<Link
+  to="route"
+  params="{{ a: '1' }}"
+  query="{{ b: '2' }}"
+  hash="hash"
+>
+  Link text
+</Link>
+```
 
 ### RouterInternal
 
@@ -332,7 +351,7 @@ and navigates to it (using [History#pushState](https://developer.mozilla.org/en-
 and re-renders the layout according to the new URL.
 
 * `name`: name of the route which will be navigated to.
-* `options`: see [RouterInternal#buildURL](#buildurl)
+* `options`: see [RouterInternal#buildURL](#buildurl) options param.
 
 ##### redirect
 
@@ -367,9 +386,6 @@ API: `router.replaceURL(url: String): void`
 
 The method is the same as the previous one, except it uses [History#replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History_API#The_replaceState()_method).
 
-
-
-
 ### RouteParams
 
 This is a class with the following instance properties:
@@ -386,4 +402,16 @@ This is a class with the following instance properties:
 * query: query params object
 * params: URL params object
 * hash: URL hash (without `#`)
-* additionalParams: see [route object `path` option](#path).
+* additionalParams: see [route object](#route-object) `path` option.
+
+### Handling link clicks
+
+The router listens to all link `click` events that reach `window`,
+prevents the default behavior and uses the HistoryAPI to navigate
+to the new URL.
+
+If the link has a `disabled` attribute, the default behavior will
+be prevented and nothing will happen.
+
+If the link has a `no-routing` attribute, the link won't be used
+by the Router (and the default behavior will stand).
