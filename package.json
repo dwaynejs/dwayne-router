@@ -1,6 +1,6 @@
 {
   "name": "dwayne-router",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "lib/index.js",
   "devDependencies": {
     "babel-core": "^6.22.1",
