@@ -9,7 +9,6 @@ import {
 } from './utils';
 import constructValidators from './constructValidators';
 import getPath from './getPath';
-import { Route } from './blocks/Route';
 
 class RouteInternal {
   constructor(options) {
@@ -46,9 +45,9 @@ class RouteInternal {
     this.query = queryValidators;
     this.queryValidators = assign(create(null), parent && parent.queryValidators, eventualQueryValidators);
     this.children = [];
+    this.ownChildren = [];
     this.relativePath = relativePath;
     this.relativeURL = relativeURL;
-    this.childBlocks = [];
 
     let proto = this;
     let newPath = (
@@ -115,10 +114,7 @@ class RouteInternal {
     }
 
     if (parent) {
-      parent.childBlocks.push({
-        type: Route,
-        args: { name }
-      });
+      parent.ownChildren.push(this);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Block, If, Children, DynamicBlock, Elements, Rest } from 'dwayne';
+import { Block, If, Children, DynamicBlock, Each, Rest } from 'dwayne';
 import { omit } from '../utils';
 
 const watchArgs = ($) => (
@@ -18,11 +18,13 @@ export class Route extends Block {
           <Children/>
         </If>
         <If if="{!router._useOriginalChildren}">
-          <Elements
-            value="{route.childBlocks}"
-            parentScope="{this}"
-            parentTemplate="{this}"
-          />
+          <Each
+            set="{route.ownChildren}"
+            item="route"
+            uid="{(route) => route.name}"
+          >
+            <Route name="{route.name}"/>
+          </Each>
         </If>
       </DynamicBlock>
     </If>

@@ -415,3 +415,6 @@ be prevented and nothing will happen.
 
 If the link has a `no-routing` attribute, the link won't be used
 by the Router (and the default behavior will stand).
+
+If the link has a `replace` attribute, the URL that will be navigated
+to will replace the previous URL (see [History#replaceState](https://developer.mozilla.org/en-US/docs/Web/API/History_API#The_replaceState()_method)).
